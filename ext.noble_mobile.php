@@ -1,0 +1,224 @@
+<?php
+
+include 'lib/Mobile_Detect.php';
+
+class Noble_mobile_ext {
+
+    var $settings				= array();
+    var $name						= 'Noble Mobile';
+    var $version				= '1.0';
+    var $description		= 'Detects mobile browsers and loads mobile templates accordingly.';
+    var $settings_exist	= 'y';
+    var $docs_url				= ''; // 'http://expressionengine.com/user_guide/';
+		
+		private $_site_pages = null;
+		
+    /**
+     * Constructor
+     *
+     * @param   mixed   Settings array or empty string if none exist.
+     */
+    function __construct($settings='')
+    {
+        $this->EE =& get_instance();
+
+        $this->settings = $settings;
+    }		
+		
+		/**
+		 * Activate Extension
+		 *
+		 * This function enters the extension into the exp_extensions table
+		 *
+		 * @see http://codeigniter.com/user_guide/database/index.html for
+		 * more information on the db class.
+		 *
+		 * @return void
+		 */
+		function activate_extension()
+		{
+			$hooks = array(
+				'core_template_route' => 'core_template_route'
+			);
+			
+			foreach ($hooks AS $hook => $method)
+			{
+				$data = array(
+					'class'			=> __CLASS__,
+					'method'		=> $method,
+					'hook'			=> $hook,
+					'priority'	=> 10,
+					'version'		=> $this->version,
+					'enabled'		=> 'y',
+					'settings'	=> ''
+				);
+			
+				$this->EE->db->insert('exp_extensions', $data);
+			}
+
+    return true;
+			
+		}
+		
+		/**
+		 * Update Extension
+		 *
+		 * This function performs any necessary db updates when the extension
+		 * page is visited
+		 *
+		 * @return  mixed   void on update / false if none
+		 */
+		function update_extension($current = '')
+		{
+			if ($current == '' OR $current == $this->version)
+			{
+				return FALSE;
+			}
+		
+			if ($current < '1.0')
+			{
+					// Update to version 1.0
+			}
+		
+			$this->EE->db->where('class', __CLASS__);
+			$this->EE->db->update(
+				'extensions',
+				array('version' => $this->version)
+			);
+		}
+		
+		/**
+		 * Disable Extension
+		 *
+		 * This method removes information from the exp_extensions table
+		 *
+		 * @return void
+		 */
+		function disable_extension()
+		{
+			$this->EE->db->where('class', __CLASS__);
+			$this->EE->db->delete('extensions');
+		}
+		
+		function core_template_route($uri) {
+			if($this->_is_mobile()) {
+
+				$this->_get_site_pages();
+				
+				$page_id = $this->_get_page_id($uri);
+				
+				//this is not a page, must be direct template access
+				if($page_id === false) {
+					$current_template = $this->_get_template_from_segments();
+				}
+				//this is a page, get template id
+				else {
+					$template_id = $this->_get_template_id($page_id);
+					$current_template = $this->_get_template_from_id($template_id);
+				}
+				
+				$mobile_template = $this->_get_mobile_template($current_template);
+				if($mobile_template !== false){
+					return $mobile_template;
+				}
+				else{
+					return;
+				}
+				
+			}
+		}
+		
+		private function _is_mobile() {
+			$detect = new Mobile_Detect();
+			return $detect->isMobile();
+		}
+		
+		private function _get_site_pages() {
+			$site_id = $this->_get_site_id();
+			$site_pages = $this->EE->config->site_pages($site_id);
+			$this->_site_pages = $site_pages[$site_id];
+		}
+		
+		private function _get_site_id() {
+			return $this->EE->config->item('site_id');
+		}
+		
+		private function _get_page_id($uri) {
+			
+			$uri = '/' . $uri;
+			
+			foreach($this->_site_pages['uris'] as $key => $value) {
+				if($value == $uri){
+					return $key;
+				}
+			}
+			
+			return false;
+		}
+		
+		private function _get_template_id($page_id) {
+			return $this->_site_pages['templates'][$page_id];
+		}
+		
+		private function _get_template_from_id($template_id) {
+			
+			$sql = "SELECT	templates.template_name AS template_name, template_groups.group_name AS group_name
+							FROM 		exp_templates AS templates,
+											exp_template_groups AS template_groups
+							WHERE 	templates.template_id = '%d'
+							AND			templates.group_id = template_groups.group_id";
+							
+			$sql = sprintf($sql, $template_id);
+			
+			$results = $this->EE->db->query($sql);
+			
+			if ($results->num_rows() == 1) {
+				$results_array = $results->result_array();
+				$row = $results_array[0];
+				return $row;
+			}
+			else{
+				return false;
+			}
+			
+		}
+		
+		private function _get_template_from_segments() {
+			
+			$segment_1 = $this->EE->uri->segment(1);
+			$segment_2 = $this->EE->uri->segment(2);
+			
+			if($segment_2 == ''){
+				$segment_2 = 'index';
+			}
+			
+			return array('group_name' => $segment_1, 'template_name' => $segment_2);
+		}
+		
+		private function _get_mobile_template($current_template) {
+			$template_name = $current_template['template_name'];
+			$template_group = 'mobile__' . $current_template['group_name'];
+			
+			$sql = "SELECT	templates.template_name AS template_name, template_groups.group_name AS group_name
+							FROM 		exp_templates AS templates,
+											exp_template_groups AS template_groups
+							WHERE 	template_name = '%s'
+							AND			group_name = '%s'
+							AND			templates.group_id = template_groups.group_id";
+			
+			$sql = sprintf($sql, $template_name, $template_group);
+			
+			$results = $this->EE->db->query($sql);
+			
+			if ($results->num_rows() > 0){
+				return array($template_group, $template_name);
+			}
+			else {
+				return false;
+			}
+			
+		}
+		
+}
+
+?>
