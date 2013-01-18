@@ -106,7 +106,7 @@ class Noble_mobile_ext {
 				$this->_get_site_pages();
 				
 				$page_id = $this->_get_page_id($uri);
-				
+
 				//this is not a page, must be direct template access
 				if($page_id === false) {
 					$current_template = $this->_get_template_from_segments();
@@ -135,7 +135,7 @@ class Noble_mobile_ext {
 		
 		private function _get_site_pages() {
 			$site_id = $this->_get_site_id();
-			$site_pages = $this->EE->config->site_pages($site_id);
+			$site_pages = $this->EE->config->item('site_pages');
 			$this->_site_pages = $site_pages[$site_id];
 		}
 		
@@ -145,15 +145,21 @@ class Noble_mobile_ext {
 		
 		private function _get_page_id($uri) {
 			
-			$uri = '/' . $uri;
+			$uri = $this->_trim_uri($uri);
 			
 			foreach($this->_site_pages['uris'] as $key => $value) {
-				if($value == $uri){
+				if($this->_trim_uri($value) == $uri){
 					return $key;
 				}
 			}
 			
 			return false;
+		}
+		
+		private function _trim_uri($uri) {
+			$uri = trim($uri, '/');
+			$uri = rtrim($uri, '/');
+			return $uri;
 		}
 		
 		private function _get_template_id($page_id) {
@@ -188,7 +194,12 @@ class Noble_mobile_ext {
 			$segment_1 = $this->EE->uri->segment(1);
 			$segment_2 = $this->EE->uri->segment(2);
 			
-			if($segment_2 == ''){
+			
+			if($segment_1 != '' && $segment_2 == ''){
+				$segment_2 = 'index';
+			}
+			else if($segment_1 == '' && $segment_2 == ''){
+				$segment_1 = $this->_get_homepage_template_group();
 				$segment_2 = 'index';
 			}
 			
@@ -217,6 +228,23 @@ class Noble_mobile_ext {
 				return false;
 			}
 			
+		}
+		
+		private function _get_homepage_template_group() {
+			$sql = "SELECT	template_groups.group_name AS group_name
+							FROM 		exp_template_groups AS template_groups
+							WHERE 	template_groups.is_site_default = 'y'";
+
+			$results = $this->EE->db->query($sql);
+			
+			if ($results->num_rows() == 1){
+				$results_array = $results->result_array();
+				$row = $results_array[0];
+				return  $row['group_name'];
+			}
+			else {
+				return false;
+			}
 		}
 		
 }
