@@ -194,13 +194,17 @@ class Noble_mobile_ext {
 			$segment_1 = $this->EE->uri->segment(1);
 			$segment_2 = $this->EE->uri->segment(2);
 			
-			
+			if($segment_1 == '' && $segment_2 == ''){
+				$segment_1 = $this->_get_homepage_template_group();
+				$segment_2 = 'index';
+			}
 			if($segment_1 != '' && $segment_2 == ''){
 				$segment_2 = 'index';
 			}
-			else if($segment_1 == '' && $segment_2 == ''){
-				$segment_1 = $this->_get_homepage_template_group();
-				$segment_2 = 'index';
+			else if($segment_1 != '' && $segment_2 != ''){
+				if(!$this->_template_exists($segment_1, $segment_2)){
+					$segment_2 = 'index';
+				}
 			}
 			
 			return array('group_name' => $segment_1, 'template_name' => $segment_2);
@@ -241,6 +245,26 @@ class Noble_mobile_ext {
 				$results_array = $results->result_array();
 				$row = $results_array[0];
 				return  $row['group_name'];
+			}
+			else {
+				return false;
+			}
+		}
+		
+		private function _template_exists($template_group, $template_name) {
+			$sql = "SELECT	templates.template_name AS template_name, template_groups.group_name AS group_name
+							FROM 		exp_templates AS templates,
+											exp_template_groups AS template_groups
+							WHERE 	template_name = '%s'
+							AND			group_name = '%s'
+							AND			templates.group_id = template_groups.group_id";
+			
+			$sql = sprintf($sql, $template_name, $template_group);
+			
+			$results = $this->EE->db->query($sql);
+			
+			if ($results->num_rows() > 0){
+				return true;
 			}
 			else {
 				return false;
