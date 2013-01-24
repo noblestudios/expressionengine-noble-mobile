@@ -1,6 +1,6 @@
 <?php
 
-include 'lib/Mobile_Detect.php';
+include 'includes/mobile_detect.php';
 
 class Noble_mobile_ext {
 
