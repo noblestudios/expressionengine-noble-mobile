@@ -1,5 +1,6 @@
-Platform: ExpressionEngine
+Platform:  ExpressionEngine
 Tested on Version 2.4
-Description: Intended to do stuff for mobile...?
-How to install: ???
-Attribution: See humans.txt
+Description:  Enables a mobile template switch based on mobile user-agent detection.
+How to install:  Upload files to /system/expressionengine/third_party/noble_mobile/ directory.
+Attribution:  See humans.txt
+Usage:  After activating extension, EE will attempt to serve up mobile templates when being accessed on a mobile device.  For example, if a mobile device is trying to access a page using the /site/index template, EE will attempt to load the /mobile__site/index template.  If no mobile template is found, EE will display the default template.
