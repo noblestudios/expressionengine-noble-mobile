@@ -8,7 +8,7 @@
 		public $name = 'Noble Mobile';
 		public $version = '1.0';
 		public $description = 'Detects mobile browsers and loads mobile templates accordingly.';
-		public $settings_exist = 'y';
+		public $settings_exist = 'n';
 		public $docs_url = '';
 
 		private $_site_pages = null;
