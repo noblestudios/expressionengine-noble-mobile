@@ -14,6 +14,8 @@
 		private $_mobile_detector = null;
 		private $_is_mobile = null;
 		private $_site_pages = null;
+		private $_cookie = null;
+		private $_cookie_timeout = 2678400;
 
 		/**
 		 * Constructor
@@ -87,10 +89,11 @@
 		}
 
 		public function core_template_route($uri) {
+			$this->_check_for_switch();
 			$this->_load_mobile_detector();
-			$this->_is_mobile = $this->_is_mobile();
+			$this->_set_class_variables();
 			$this->_set_global_variables();
-			if($this->_is_mobile) {
+			if($this->_display_mobile()) {
 				$this->_get_site_pages();
 				$page_id = $this->_get_page_id($uri);
 				if($page_id === false) {
@@ -108,17 +111,49 @@
 			}
 		}
 
+		private function _check_for_switch() {
+			$switch_to = $this->EE->input->get('switch_to');
+			if($switch_to) {
+				$this->_set_cookie($switch_to);
+				$this->EE->functions->redirect($this->EE->functions->fetch_current_uri());
+			}
+		}
+
 		private function _load_mobile_detector() {
 			$this->_mobile_detector = new Mobile_Detect();
 		}
-		
-		private function _is_mobile() {
-			return $this->_mobile_detector->isMobile();
+
+		private function _set_class_variables() {
+			$this->_is_mobile = $this->_mobile_detector->isMobile();
+			$this->_cookie = $this->_get_cookie();
 		}
 
 		private function _set_global_variables() {
 			$this->EE->config->_global_vars['is_mobile'] = $this->_is_mobile;
 			$this->EE->config->_global_vars['is_desktop'] = !$this->_is_mobile;
+			$current_uri = $this->EE->functions->fetch_current_uri();
+			$this->EE->config->_global_vars['noble_mobile:switch_to_mobile'] = $current_uri.'?switch_to=mobile';
+			$this->EE->config->_global_vars['noble_mobile:switch_to_desktop'] = $current_uri.'?switch_to=desktop';
+		}
+
+		private function _display_mobile() {
+			if($this->_is_mobile && $this->_cookie != 'desktop') {
+				return true;
+			}
+			else if(!$this->_is_mobile && $this->_cookie == 'mobile') {
+				return true;
+			}
+			else {
+				return false;
+			}
+		}
+
+		private function _get_cookie() {
+			return $this->EE->input->cookie(strtolower(__CLASS__));
+		}
+
+		private function _set_cookie($value) {
+			$this->EE->functions->set_cookie(strtolower(__CLASS__), $value, $this->_cookie_timeout);
 		}
 
 		private function _get_site_pages() {
