@@ -11,6 +11,8 @@
 		public $settings_exist = 'n';
 		public $docs_url = '';
 
+		private $_mobile_detector = null;
+		private $_is_mobile = null;
 		private $_site_pages = null;
 
 		/**
@@ -85,7 +87,10 @@
 		}
 
 		public function core_template_route($uri) {
-			if($this->_is_mobile()) {
+			$this->_load_mobile_detector();
+			$this->_is_mobile = $this->_is_mobile();
+			$this->_set_global_variables();
+			if($this->_is_mobile) {
 				$this->_get_site_pages();
 				$page_id = $this->_get_page_id($uri);
 				if($page_id === false) {
@@ -103,9 +108,17 @@
 			}
 		}
 
+		private function _load_mobile_detector() {
+			$this->_mobile_detector = new Mobile_Detect();
+		}
+		
 		private function _is_mobile() {
-			$detect = new Mobile_Detect();
-			return $detect->isMobile();
+			return $this->_mobile_detector->isMobile();
+		}
+
+		private function _set_global_variables() {
+			$this->EE->config->_global_vars['is_mobile'] = $this->_is_mobile;
+			$this->EE->config->_global_vars['is_desktop'] = !$this->_is_mobile;
 		}
 
 		private function _get_site_pages() {
